@@ -33,7 +33,7 @@ local function StartSMKTHubWebhook()
     local AnimalsData = require(Datas:WaitForChild("Animals"))
     local AnimalsShared = require(Shared:WaitForChild("Animals"))
 
-    local MIN_GEN_VALUE = 10000000
+    local MIN_GEN_VALUE = 1
 
     local ALWAYS_SEND = {}
     for _, n in ipairs({
