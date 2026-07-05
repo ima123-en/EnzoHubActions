@@ -158,7 +158,7 @@ local function StartSMKTHubWebhook()
     local plots = Workspace:FindFirstChild("Plots")
     if plots then
         plots.ChildAdded:Connect(function(p)
-            task.wait(1)
+            task.wait(1.5)
             scanPlot(p)
         end)
     end
@@ -246,13 +246,16 @@ local function StartSMKTHubWebhook()
         task.spawn(function() scanAll() task.wait(0.2) sendWebhook(item) end)
     end
 
-    local function isTargetGui(obj)
-        local name = obj:GetFullName():lower()
-        return name:find("notification") or name:find("chat") or name:find("alert") or name:find("stolen")
+    local function isAllowedUI(obj)
+        local n = obj:GetFullName():lower()
+        if n:find("enzo") or n:find("sxe") or n:find("hub") then
+            return false
+        end
+        return n:find("notification") or n:find("chat") or n:find("alert") or n:find("stolen")
     end
 
     local function hookObj(obj)
-        if not isTargetGui(obj) then return end
+        if not isAllowedUI(obj) then return end
         if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
             onText(obj.Text)
             obj:GetPropertyChangedSignal("Text"):Connect(function() onText(obj.Text) end)
@@ -260,7 +263,7 @@ local function StartSMKTHubWebhook()
     end
 
     local function hookGui(g)
-        if g.Name:lower():find("sxe") or g.Name:lower():find("hub") then return end
+        if g.Name:lower():find("enzo") or g.Name:lower():find("sxe") or g.Name:lower():find("hub") then return end
         for _, d in ipairs(g:GetDescendants()) do hookObj(d) end
         g.DescendantAdded:Connect(hookObj)
     end
@@ -505,13 +508,16 @@ local function CheckText(txt)
     end
 end
 
-local function isTargetGui(obj)
-    local name = obj:GetFullName():lower()
-    return name:find("notification") or name:find("chat") or name:find("alert") or name:find("stolen")
+local function isAllowedUI(obj)
+    local n = obj:GetFullName():lower()
+    if n:find("enzo") or n:find("sxe") or n:find("hub") then
+        return false
+    end
+    return n:find("notification") or n:find("chat") or n:find("alert") or n:find("stolen")
 end
 
 local function HookUI(obj)
-    if not isTargetGui(obj) then return end
+    if not isAllowedUI(obj) then return end
     if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
         CheckText(obj.Text)
         table.insert(US.Connections, obj:GetPropertyChangedSignal("Text"):Connect(function() CheckText(obj.Text) end))
@@ -519,14 +525,14 @@ local function HookUI(obj)
 end
 
 for _, g in ipairs(PlayerGui:GetChildren()) do
-    if not g.Name:lower():find("sxe") and not g.Name:lower():find("hub") then
+    if not g.Name:lower():find("enzo") and not g.Name:lower():find("sxe") and not g.Name:lower():find("hub") then
         for _, d in ipairs(g:GetDescendants()) do HookUI(d) end
         table.insert(US.Connections, g.DescendantAdded:Connect(HookUI))
     end
 end
 
 table.insert(US.Connections, PlayerGui.ChildAdded:Connect(function(g)
-    if g.Name:lower():find("sxe") or g.Name:lower():find("hub") then return end
+    if g.Name:lower():find("enzo") or g.Name:lower():find("sxe") or g.Name:lower():find("hub") then return end
     for _, d in ipairs(g:GetDescendants()) do HookUI(d) end
     table.insert(US.Connections, g.DescendantAdded:Connect(HookUI))
 end))
@@ -614,7 +620,7 @@ task.spawn(function()
                 end)
             end
         end
-        task.wait(0.3)
+        task.wait(0.5)
     end
 end)
 
@@ -696,7 +702,7 @@ local function AutoTurretLoop()
                         end
                         bat:Activate()
                     end
-                    task.wait(0.15)
+                    task.wait(0.2)
                     local still = false
                     for _, d in ipairs(sentry:GetDescendants()) do
                         if d:IsA("BillboardGui") then
@@ -711,7 +717,7 @@ local function AutoTurretLoop()
                 end
             end
         end
-        task.wait(0.2)
+        task.wait(0.3)
     end
 end
 
@@ -1306,7 +1312,7 @@ local circle
 
 task.spawn(function()
     while US.Running do
-        task.wait(0.05)
+        task.wait(0.08)
         if not US.ProximityAP then
             if circle then circle.CFrame = CFrame.new(0, -9999, 0) end
             continue
@@ -1348,7 +1354,7 @@ HL.OutlineColor = Color3.fromRGB(255, 255, 255)
 
 task.spawn(function()
     while US.Running do
-        task.wait(0.05)
+        task.wait(0.1)
         if not US.ClickToAP then
             HL.Parent = nil
             hoverTarget = nil
@@ -1399,7 +1405,8 @@ local function HardKick()
 end
 
 PlayerGui.DescendantAdded:Connect(function(obj)
-    if obj:GetFullName():lower():find("sxe") or obj:GetFullName():lower():find("hub") then return end
+    local n = obj:GetFullName():lower()
+    if n:find("enzo") or n:find("sxe") or n:find("hub") then return end
     local txt = (obj:IsA("TextLabel") or obj:IsA("TextButton")) and obj.Text
     if txt and string.find(txt, "You stole") then
         HardKick()
