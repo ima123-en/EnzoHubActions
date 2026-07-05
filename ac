@@ -542,6 +542,12 @@ local function getHRP_US()
     return c and c:FindFirstChild("HumanoidRootPart")
 end
 
+local function isFlyingFast()
+    local hrp = getHRP_US()
+    if not hrp then return false end
+    return hrp.AssemblyLinearVelocity.Magnitude > 45
+end
+
 local function runDropBrainrot()
     if getgenv().DropBrainActive then return end
     getgenv().DropBrainActive = true
@@ -587,22 +593,19 @@ local function findNearestBuyPrompt()
     if not hrp then return nil end
     local bestPrompt
     local bestDist = math.huge
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("ProximityPrompt") and obj.Enabled and isBuyPrompt(obj) then
-            local parent = obj.Parent
-            local pos
-            if parent then
-                if parent:IsA("BasePart") then
-                    pos = parent.Position
-                elseif parent:IsA("Attachment") and parent.Parent and parent.Parent:IsA("BasePart") then
-                    pos = parent.Parent.Position
-                end
-            end
-            if pos then
-                local dist = (hrp.Position - pos).Magnitude
-                if dist < bestDist then
-                    bestDist = dist
-                    bestPrompt = obj
+    local plots = Workspace:FindFirstChild("Plots")
+    if not plots then return nil end
+    for _, plot in ipairs(plots:GetChildren()) do
+        for _, obj in ipairs(plot:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") and obj.Enabled and isBuyPrompt(obj) then
+                local parent = obj.Parent
+                local pos = parent and (parent:IsA("BasePart") and parent.Position or (parent:IsA("Attachment") and parent.Parent and parent.Parent:IsA("BasePart") and parent.Parent.Position))
+                if pos then
+                    local dist = (hrp.Position - pos).Magnitude
+                    if dist < bestDist then
+                        bestDist = dist
+                        bestPrompt = obj
+                    end
                 end
             end
         end
@@ -612,7 +615,7 @@ end
 
 task.spawn(function()
     while US.Running do
-        if US.AutoBuy then
+        if US.AutoBuy and not isFlyingFast() then
             local prompt = findNearestBuyPrompt()
             if prompt and prompt.Enabled then
                 pcall(function()
@@ -631,25 +634,29 @@ local function getClosestSentry()
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil end
     local closest, dist = nil, math.huge
-    for _, inst in ipairs(Workspace:GetDescendants()) do
-        if inst.Name:match("^Sentry_") then
-            local hasEx = false
-            for _, d in ipairs(inst:GetDescendants()) do
-                if d:IsA("BillboardGui") then
-                    local l = d:FindFirstChildWhichIsA("TextLabel", true)
-                    if l and l.Text:find("!") then
-                        hasEx = true
-                        break
+    local plots = Workspace:FindFirstChild("Plots")
+    if not plots then return nil end
+    for _, plot in ipairs(plots:GetChildren()) do
+        for _, inst in ipairs(plot:GetChildren()) do
+            if inst.Name:match("^Sentry_") then
+                local hasEx = false
+                for _, d in ipairs(inst:GetDescendants()) do
+                    if d:IsA("BillboardGui") then
+                        local l = d:FindFirstChildWhichIsA("TextLabel", true)
+                        if l and l.Text:find("!") then
+                            hasEx = true
+                            break
+                        end
                     end
                 end
-            end
-            if hasEx then
-                local r = inst:IsA("BasePart") and inst or inst:FindFirstChildWhichIsA("BasePart", true)
-                if r then
-                    local d2 = (hrp.Position - r.Position).Magnitude
-                    if d2 < dist then
-                        dist = d2
-                        closest = inst
+                if hasEx then
+                    local r = inst:IsA("BasePart") and inst or inst:FindFirstChildWhichIsA("BasePart", true)
+                    if r then
+                        local d2 = (hrp.Position - r.Position).Magnitude
+                        if d2 < dist then
+                            dist = d2
+                            closest = inst
+                        end
                     end
                 end
             end
@@ -679,10 +686,10 @@ end
 
 local function AutoTurretLoop()
     while US.Running do
-        if AutoTurretEnabled and not (LocalPlayer:GetAttribute("Stealing") == true) then
+        if AutoTurretEnabled and not isFlyingFast() and not (LocalPlayer:GetAttribute("Stealing") == true) then
             local sentry = getClosestSentry()
             if sentry then
-                while sentry and sentry.Parent and (LocalPlayer:GetAttribute("Stealing") ~= true) and AutoTurretEnabled do
+                while sentry and sentry.Parent and not isFlyingFast() and (LocalPlayer:GetAttribute("Stealing") ~= true) and AutoTurretEnabled do
                     local ch = LocalPlayer.Character
                     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
                     local hum = ch and ch:FindFirstChildOfClass("Humanoid")
@@ -717,7 +724,7 @@ local function AutoTurretLoop()
                 end
             end
         end
-        task.wait(0.3)
+        task.wait(0.4)
     end
 end
 
@@ -1287,7 +1294,7 @@ end)
 local lastInside = {}
 task.spawn(function()
     while US.Running do
-        if US.ProximityAP then
+        if US.ProximityAP and not isFlyingFast() then
             local char = LocalPlayer.Character
             local hrp  = char and char:FindFirstChild("HumanoidRootPart")
             if hrp then
@@ -1304,7 +1311,7 @@ task.spawn(function()
                 end
             end
         end
-        task.wait(0.1)
+        task.wait(0.25)
     end
 end)
 
@@ -1312,8 +1319,8 @@ local circle
 
 task.spawn(function()
     while US.Running do
-        task.wait(0.08)
-        if not US.ProximityAP then
+        task.wait(0.1)
+        if not US.ProximityAP or isFlyingFast() then
             if circle then circle.CFrame = CFrame.new(0, -9999, 0) end
             continue
         end
@@ -1354,7 +1361,7 @@ HL.OutlineColor = Color3.fromRGB(255, 255, 255)
 
 task.spawn(function()
     while US.Running do
-        task.wait(0.1)
+        task.wait(0.15)
         if not US.ClickToAP then
             HL.Parent = nil
             hoverTarget = nil
