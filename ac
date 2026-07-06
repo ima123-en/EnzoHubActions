@@ -21,7 +21,12 @@ local instaResetCooldown = false
 
 local old
 old = hookfunction(Instance.new("RemoteEvent").FireServer, function(self, ...)
-    if not resetRemote and self.Name:sub(1, 3) == "RE/" then
+    -- Wenn die Remote bereits gefunden wurde, direkt ohne Umwege weiterleiten (spart enorm CPU!)
+    if resetRemote then 
+        return old(self, ...) 
+    end
+    
+    if self.Name:sub(1, 3) == "RE/" then
         resetRemote = self
     end
     return old(self, ...)
