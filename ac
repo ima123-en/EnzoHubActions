@@ -18,18 +18,16 @@ local SAVE_KEY    = "UnifiedSystem_V7_" .. LocalPlayer.UserId
 
 local resetRemote = nil
 local instaResetCooldown = false
+local oldFireServer
 
-local old
-old = hookfunction(Instance.new("RemoteEvent").FireServer, function(self, ...)
-    -- Wenn die Remote bereits gefunden wurde, direkt ohne Umwege weiterleiten (spart enorm CPU!)
-    if resetRemote then 
-        return old(self, ...) 
-    end
-    
+-- ULTRAPERFORMANT: Hook zerstört sich nach dem Fund selbst (Unhooking)
+oldFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, function(self, ...)
     if self.Name:sub(1, 3) == "RE/" then
         resetRemote = self
+        -- Stellt die Originalfunktion wieder her, eliminiert 100% des Overheads beim Fliegen
+        hookfunction(Instance.new("RemoteEvent").FireServer, oldFireServer)
     end
-    return old(self, ...)
+    return oldFireServer(self, ...)
 end)
 
 local function instantReset()
@@ -547,7 +545,6 @@ local function getHRP_US()
     return c and c:FindFirstChild("HumanoidRootPart")
 end
 
--- Optimierte Geschwindigkeitsabfrage
 local function isFlyingFast()
     local hrp = getHRP_US()
     if not hrp then return false end
@@ -692,12 +689,10 @@ end
 
 local function AutoTurretLoop()
     while US.Running do
-        -- HIER OPTIMIERT: Bei hoher Geschwindigkeit schläft die Schleife länger, um CPU zu sparen
         if isFlyingFast() then 
             task.wait(1) 
             continue 
         end
-        
         if AutoTurretEnabled and not (LocalPlayer:GetAttribute("Stealing") == true) then
             local sentry = getClosestSentry()
             if sentry then
@@ -1306,12 +1301,10 @@ end)
 local lastInside = {}
 task.spawn(function()
     while US.Running do
-        -- HIER OPTIMIERT: Bei hoher Geschwindigkeit pausiert die Erkennung
         if isFlyingFast() then
             task.wait(0.5)
             continue
         end
-
         if US.ProximityAP then
             local char = LocalPlayer.Character
             local hrp  = char and char:FindFirstChild("HumanoidRootPart")
@@ -1338,7 +1331,6 @@ local circle
 task.spawn(function()
     while US.Running do
         task.wait(0.1)
-        -- HIER OPTIMIERT: Wenn ProximityAP aus ist oder Spieler fliegt, Kreis sofort verstecken/löschen
         if not US.ProximityAP or isFlyingFast() then
             if circle then 
                 circle:Destroy() 
@@ -1357,7 +1349,7 @@ task.spawn(function()
         params.FilterDescendantsInstances = {LocalPlayer.Character}
         params.FilterType = Enum.RaycastFilterType.Exclude
         
-        -- HIER OPTIMIERT: Raycast-Länge von 1000 auf 50 Studs verringert (Enorme CPU-Entlastung!)
+        -- Verkürzter Strahl spart massiv Leistung
         local ray = Workspace:Raycast(hrp.Position + Vector3.new(0, 5, 0), Vector3.new(0, -50, 0), params)
         local pos = ray and Vector3.new(hrp.Position.X, ray.Position.Y + 0.05, hrp.Position.Z) or hrp.Position - Vector3.new(0,3,0)
         
@@ -1388,15 +1380,12 @@ HL.OutlineColor = Color3.fromRGB(255, 255, 255)
 
 task.spawn(function()
     while US.Running do
-        task.wait(0.2) -- HIER OPTIMIERT: Intervall von 0.15 auf 0.2 erhöht
-        
-        -- HIER OPTIMIERT: Keine Berechnungen beim Fliegen
+        task.wait(0.2)
         if not US.ClickToAP or isFlyingFast() then
             HL.Parent = nil
             hoverTarget = nil
             continue
         end
-        
         local cam = Workspace.CurrentCamera
         if not cam then continue end
         local ray = cam:ScreenPointToRay(Mouse.X, Mouse.Y)
