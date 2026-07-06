@@ -158,7 +158,7 @@ local function StartSMKTHubWebhook()
     local plots = Workspace:FindFirstChild("Plots")
     if plots then
         plots.ChildAdded:Connect(function(p)
-            task.wait(1.5)
+            task.wait(2)
             scanPlot(p)
         end)
     end
@@ -246,16 +246,14 @@ local function StartSMKTHubWebhook()
         task.spawn(function() scanAll() task.wait(0.2) sendWebhook(item) end)
     end
 
-    local function isAllowedUI(obj)
-        local n = obj:GetFullName():lower()
-        if n:find("enzo") or n:find("sxe") or n:find("hub") then
-            return false
-        end
-        return n:find("notification") or n:find("chat") or n:find("alert") or n:find("stolen")
+    local function isSystemUI(obj)
+        local name = obj.Name:lower()
+        local parentName = (obj.Parent and obj.Parent.Name:lower()) or ""
+        return name:find("notification") or parentName:find("notification") or name:find("chat") or parentName:find("chat")
     end
 
     local function hookObj(obj)
-        if not isAllowedUI(obj) then return end
+        if not isSystemUI(obj) then return end
         if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
             onText(obj.Text)
             obj:GetPropertyChangedSignal("Text"):Connect(function() onText(obj.Text) end)
@@ -263,7 +261,8 @@ local function StartSMKTHubWebhook()
     end
 
     local function hookGui(g)
-        if g.Name:lower():find("enzo") or g.Name:lower():find("sxe") or g.Name:lower():find("hub") then return end
+        local name = g.Name:lower()
+        if name:find("enzo") or name:find("sxe") or name:find("unified") then return end
         for _, d in ipairs(g:GetDescendants()) do hookObj(d) end
         g.DescendantAdded:Connect(hookObj)
     end
@@ -510,7 +509,7 @@ end
 
 local function isAllowedUI(obj)
     local n = obj:GetFullName():lower()
-    if n:find("enzo") or n:find("sxe") or n:find("hub") then
+    if n:find("enzo") or n:find("sxe") or n:find("unified") then
         return false
     end
     return n:find("notification") or n:find("chat") or n:find("alert") or n:find("stolen")
@@ -525,14 +524,16 @@ local function HookUI(obj)
 end
 
 for _, g in ipairs(PlayerGui:GetChildren()) do
-    if not g.Name:lower():find("enzo") and not g.Name:lower():find("sxe") and not g.Name:lower():find("hub") then
+    local name = g.Name:lower()
+    if not name:find("enzo") and not name:find("sxe") and not name:find("unified") then
         for _, d in ipairs(g:GetDescendants()) do HookUI(d) end
         table.insert(US.Connections, g.DescendantAdded:Connect(HookUI))
     end
 end
 
 table.insert(US.Connections, PlayerGui.ChildAdded:Connect(function(g)
-    if g.Name:lower():find("enzo") or g.Name:lower():find("sxe") or g.Name:lower():find("hub") then return end
+    local name = g.Name:lower()
+    if name:find("enzo") or name:find("sxe") or name:find("unified") then return end
     for _, d in ipairs(g:GetDescendants()) do HookUI(d) end
     table.insert(US.Connections, g.DescendantAdded:Connect(HookUI))
 end))
@@ -542,10 +543,28 @@ local function getHRP_US()
     return c and c:FindFirstChild("HumanoidRootPart")
 end
 
+local currentFastState = false
+local lastStateCheck = 0
+
 local function isFlyingFast()
-    local hrp = getHRP_US()
-    if not hrp then return false end
-    return hrp.AssemblyLinearVelocity.Magnitude > 45
+    local now = tick()
+    if now - lastStateCheck >= 0.5 then
+        lastStateCheck = now
+        local hrp = getHRP_US()
+        if hrp then
+            local speed = hrp.AssemblyLinearVelocity.Magnitude
+            if currentFastState then
+                if speed < 30 then
+                    currentFastState = false
+                end
+            else
+                if speed > 55 then
+                    currentFastState = true
+                end
+            end
+        end
+    end
+    return currentFastState
 end
 
 local function runDropBrainrot()
@@ -596,7 +615,7 @@ local function findNearestBuyPrompt()
     local plots = Workspace:FindFirstChild("Plots")
     if not plots then return nil end
     for _, plot in ipairs(plots:GetChildren()) do
-        for _, obj in ipairs(plot:GetDescendants()) do
+        for _, obj in ipairs(plot:GetChildren()) do
             if obj:IsA("ProximityPrompt") and obj.Enabled and isBuyPrompt(obj) then
                 local parent = obj.Parent
                 local pos = parent and (parent:IsA("BasePart") and parent.Position or (parent:IsA("Attachment") and parent.Parent and parent.Parent:IsA("BasePart") and parent.Parent.Position))
@@ -1413,7 +1432,7 @@ end
 
 PlayerGui.DescendantAdded:Connect(function(obj)
     local n = obj:GetFullName():lower()
-    if n:find("enzo") or n:find("sxe") or n:find("hub") then return end
+    if n:find("enzo") or n:find("sxe") or n:find("unified") then return end
     local txt = (obj:IsA("TextLabel") or obj:IsA("TextButton")) and obj.Text
     if txt and string.find(txt, "You stole") then
         HardKick()
